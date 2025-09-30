@@ -4,3 +4,5 @@ dotenv
 pandas
 time
 schedule
+snowflake-connector-python
+snowflake-connector-python[pandas]

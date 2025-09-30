@@ -23,6 +23,15 @@ def save_progress(next_url, tickers):
     """
     Save current progress to files so we can resume if interrupted
     
+    This function creates two backup files:
+    1. progress.json - stores the next URL and ticker count
+    2. tickers_partial.csv - stores all tickers collected so far
+    
+    Why this is important:
+    - If the script crashes or gets interrupted, we can continue where we left off
+    - Prevents losing all progress if something goes wrong
+    - Especially useful for large datasets that take hours to download
+    
     Args:
         next_url: The URL for the next page of results from the API
         tickers: List of ticker dictionaries we've collected so far
@@ -35,7 +44,7 @@ def save_progress(next_url, tickers):
         json.dump(progress, f)
     
     # Save current tickers to CSV as backup
-    if tickers:  # Only save if we have tickers
+    if tickers:  # Only save if we have tickers (avoid empty file)
         df = pd.DataFrame(tickers)  # Convert list of dictionaries to DataFrame
         df.to_csv(TICKERS_FILE, index=False)  # Save to CSV without row numbers
     
@@ -44,6 +53,10 @@ def save_progress(next_url, tickers):
 def load_progress():
     """
     Load previous progress if script was interrupted and restarted
+    
+    This function checks if there are existing progress files and:
+    - If progress.json exists: gets the URL to resume from
+    - If tickers_partial.csv exists: loads previously collected tickers
     
     Returns:
         next_url: URL to resume from (None if starting fresh)
@@ -68,11 +81,21 @@ def load_progress():
     return next_url, tickers
 
 def run_stock_job():
-    # Main execution starts here
-    # Check if we're resuming from previous run or starting fresh
+    """
+    Main function that orchestrates the entire data fetching process.
+    
+    This function handles:
+    - Starting fresh or resuming from previous progress
+    - Making API requests to Polygon
+    - Handling rate limits and errors
+    - Saving progress after each page
+    - Final cleanup and data export
+    """
+    
+    # Step 1: Check if we're resuming from previous run or starting fresh
     resume_url, tickers = load_progress()
 
-    # Set up the initial API request URL
+    # Step 2: Set up the initial API request URL
     if resume_url:
         # We're resuming - use the saved URL and add our API key
         print(f"Resuming from: {resume_url}")
@@ -81,24 +104,27 @@ def run_stock_job():
         # Starting fresh - build the initial request URL
         print("Starting fresh")
         # API endpoint with parameters:
-        # - market=stocks: only stock tickers
-        # - active=true: only currently active tickers
-        # - order=asc: alphabetical order
-        # - limit=1000: maximum results per request
+        # - market=stocks: only stock tickers (not crypto, forex, etc.)
+        # - active=true: only currently active tickers (not delisted companies)
+        # - order=asc: alphabetical order (A to Z)
+        # - limit=1000: maximum results per request (Polygon's limit)
         # - sort=ticker: sort by ticker symbol
         url = f"https://api.polygon.io/v3/reference/tickers?market=stocks&active=true&order=asc&limit={LIMIT}&sort=ticker&apiKey={API_kEY}"
 
-    # Make the first API request
-    response = requests.get(url)  # Send HTTP GET request
-    data = response.json()  # Convert response to Python dictionary
+    # Step 3: Make the first API request
+    print("Making initial API request...")
+    response = requests.get(url)  # Send HTTP GET request to Polygon API
+    data = response.json()  # Convert JSON response to Python dictionary
 
-    # Check if the API returned an error
+    # Step 4: Check if the API returned an error
     if data.get('status') == 'ERROR':
         print(f"API Error: {data.get('error')}")
         exit(1)  # Stop the program if there's an API error
 
-    # Add results from first request (only if not resuming to avoid duplicates)
+    # Step 5: Add results from first request (only if not resuming to avoid duplicates)
     if not resume_url and 'results' in data:
+        # Only add results if we're starting fresh (not resuming)
+        # This prevents duplicate data when resuming
         for ticker in data['results']:  # Loop through each ticker in the results
             tickers.append(ticker)  # Add ticker dictionary to our list
 
@@ -106,13 +132,14 @@ def run_stock_job():
     request_count = 1
     print(f"Current total: {len(tickers)} tickers")
 
-    # Main loop: continue requesting pages until we get all data
+    # Step 6: Main loop - continue requesting pages until we get all data
     while 'next_url' in data:  # As long as there's a next page URL
         # Save our progress before making the next request (in case something goes wrong)
+        # This is like a checkpoint - if the next request fails, we can resume from here
         save_progress(data['next_url'], tickers)
         
         # Wait 12 seconds between requests to respect rate limits
-        # (Polygon allows 5 requests per minute for free accounts)
+        # Polygon allows 5 requests per minute for free accounts (60/5 = 12 seconds)
         print("Waiting 12 seconds before next request...")
         time.sleep(12)
         
@@ -121,7 +148,7 @@ def run_stock_job():
         response = requests.get(data['next_url'] + f'&apiKey={API_kEY}')  # Add API key to next URL
         data = response.json()  # Convert response to dictionary
         
-        # Check for API errors (especially rate limiting)
+        # Step 7: Check for API errors (especially rate limiting)
         if data.get('status') == 'ERROR':
             print(f"API Error: {data.get('error')}")
             
@@ -135,7 +162,7 @@ def run_stock_job():
                 print("Different API error occurred. Stopping.")
                 break  # Exit the while loop
         
-        # Process the results from this request
+        # Step 8: Process the results from this request
         if 'results' in data:
             for ticker in data['results']:  # Loop through each ticker
                 tickers.append(ticker)  # Add to our master list
@@ -147,29 +174,42 @@ def run_stock_job():
         
         request_count += 1  # Increment our request counter
 
-    # We're done collecting data
+    # Step 9: We're done collecting data - final reporting
     print(f"Completed after {request_count} requests. Total tickers collected: {len(tickers)}")
 
-    # Define the columns we want in our final CSV file
+    # Step 10: Define the columns we want in our final CSV file
+    # These are the specific fields we're interested in from the API response
     columns = [
-        "ticker", "name", "market", "locale", "primary_exchange", "type", 
-        "active", "currency_name", "cik", "composite_figi", "share_class_figi", "last_updated_utc"
+        "ticker",           # Stock symbol (e.g., AAPL, MSFT)
+        "name",             # Company name (Apple Inc., Microsoft Corporation)
+        "market",           # Market type (stocks, crypto, etc.)
+        "locale",           # Geographic region (us, global)
+        "primary_exchange", # Main stock exchange (NASDAQ, NYSE)
+        "type",             # Security type (CS, ETF, etc.)
+        "active",           # Whether the ticker is currently active
+        "currency_name",    # Trading currency (USD, CAD, etc.)
+        "cik",              # Central Index Key (SEC identifier)
+        "composite_figi",   # Financial Instrument Global Identifier
+        "share_class_figi", # Share class specific identifier  
+        "last_updated_utc"  # Last update timestamp from Polygon
     ]
 
-    # Ensure all tickers have all columns (some might be missing certain fields)
+    # Step 11: Ensure all tickers have all columns (some might be missing certain fields)
+    # This is important because not all companies have all data fields
     for t in tickers:  # Loop through each ticker dictionary
         for col in columns:  # Check each column we want
             if col not in t:  # If the ticker doesn't have this field
                 t[col] = None  # Set it to None (will show as empty in CSV)
 
-    # Create final DataFrame with specified column order
+    # Step 12: Create final DataFrame with specified column order
     df = pd.DataFrame(tickers, columns=columns)
 
-    # Save the final results to CSV
+    # Step 13: Save the final results to CSV
     df.to_csv("tickers_final.csv", index=False)  # Save without row numbers
     print(f"Saved {len(tickers)} tickers to tickers_final.csv")
 
-    # Clean up temporary files since we're done
+    # Step 14: Clean up temporary files since we're done
+    # Remove the progress files since we successfully completed the job
     if os.path.exists(PROGRESS_FILE):  # If progress file exists
         os.remove(PROGRESS_FILE)  # Delete it
     if os.path.exists(TICKERS_FILE):  # If partial results file exists
@@ -177,6 +217,7 @@ def run_stock_job():
     print("Cleanup completed - removed progress files")
 
 
-# allow running standalone
+# This condition ensures the script only runs when executed directly
+# (not when imported as a module in another script)
 if __name__ == "__main__":
     run_stock_job()
