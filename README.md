@@ -1,20 +1,20 @@
-# Stock Data Pipeline 🚀
+# Stock Data Pipeline 
 
 Um sistema profissional de pipeline de dados para coleta, processamento e armazenamento de informações financeiras em tempo real. Desenvolvido para demonstrar habilidades em engenharia de dados, APIs, e integração com cloud services.
 
-## 🎯 Sobre o Projeto
+##  Sobre o Projeto
 
 Este projeto implementa um pipeline completo de dados financeiros que coleta informações de ações da Polygon API, oferecendo múltiplas opções de armazenamento e execução automatizada. Ideal para demonstração de habilidades em desenvolvimento backend e engenharia de dados.
 
-## ✨ Destaques Técnicos
+##  Destaques Técnicos
 
-### 🏗️ Arquitetura e Design
+###  Arquitetura e Design
 - **Arquitetura modular** com separação de responsabilidades
 - **Padrão de resiliência** com sistema de resume automático
 - **Configuração externalizada** via environment variables
 - **Logging detalhado** para monitoramento do pipeline
 
-### 🔧 Habilidades Demonstradas
+###  Habilidades Demonstradas
 - **Integração com APIs REST** (Polygon.io) com rate limiting
 - **Processamento de dados** com Pandas e manipulação de JSON
 - **Banco de dados cloud** (Snowflake) com conexão otimizada
@@ -23,14 +23,14 @@ Este projeto implementa um pipeline completo de dados financeiros que coleta inf
 - **Tratamento de erros** e exceções robusto
 - **Versionamento de dados** com timestamps e metadados
 
-### 📊 Funcionalidades Avançadas
+###  Funcionalidades Avançadas
 - **Resume inteligente** - Continua de interrupções sem perda de dados
 - **Rate limiting adaptativo** - Respeita limites da API automaticamente
 - **Múltiplos destinos** - CSV local ou Snowflake na nuvem
 - **Backup progressivo** - Checkpoints a cada página de dados
 - **Cleanup automático** - Gestão de arquivos temporários
 
-## 🛠️ Stack Tecnológico
+##  Stack Tecnológico
 
 | Camada | Tecnologias |
 |--------|-------------|
@@ -42,7 +42,7 @@ Este projeto implementa um pipeline completo de dados financeiros que coleta inf
 | **Environment** | python-dotenv, os |
 | **HTTP Requests** | requests |
 
-## 🚀 Começando
+##  Começando
 
 ### Pré-requisitos
 - Python 3.7 ou superior
@@ -149,13 +149,7 @@ stock-data-pipeline/
 4. **Persistência** → CSV ou Snowflake
 5. **Logging** → Monitoramento e debug
 
-## 🎯 Casos de Uso Demonstrados
-
-### 💼 Para Entrevistas Técnicas
-- **Engenharia de Dados**: Pipeline completo ETL/ELT
-- **Backend Development**: Integração API + Database
-- **DevOps**: Scheduling + Environment management
-- **Data Engineering**: Cloud data warehousing
+##  Casos de Uso Demonstrados
 
 ### 🏢 Aplicações Reais
 - **Financial Analytics**: Base para análise de ações
@@ -191,14 +185,14 @@ def upload_to_snowflake(df):
     success, nchunks, nrows, _ = write_pandas(conn, df, "STOCK_TICKERS")
 ```
 
-## 📊 Métricas do Sistema
+##  Métricas do Sistema
 
 - **≈8,000+ tickers** coletados por execução
 - **≈2-3 horas** para coleta completa (rate limit)
 - **100% resiliência** a interrupções
 - **Dual storage** local e cloud
 
-## 🚨 Solução de Problemas
+## Solução de Problemas
 
 ### Erros Comuns
 ```bash
@@ -221,10 +215,10 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 
-## 📄 Licença
+##  Licença
 
 Distribuído sob licença MIT. Veja `LICENSE` para mais informações.
 
-## 👨💻 Autor
+## Autor
 
 Tassio Carmo- [GitHub](https://github.com/TassioCarmo) - [LinkedIn](https://linkedin.com/in/tassioluiz)
