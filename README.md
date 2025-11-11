@@ -93,7 +93,7 @@ SNOWFLAKE_SCHEMA=PUBLIC
 SNOWFLAKE_ROLE=ACCOUNTADMIN
 ```
 
-## 💻 Uso
+## Uso
 
 ### Modo de Execução Única
 ```bash
